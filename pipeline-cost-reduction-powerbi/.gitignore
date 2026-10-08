@@ -1,0 +1,12 @@
+# generated data
+data/
+*.db
+
+# Excel and Power BI files
+*.xlsx
+*.pbix
+!templates/*.xlsx
+
+# Python
+__pycache__/
+.venv/
