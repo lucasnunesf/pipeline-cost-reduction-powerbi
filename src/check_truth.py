@@ -72,6 +72,8 @@ def main():
 
     ok = not extra and not mismatches and len(missing) == len(generated)
     print("\nRESULT:", "PASS" if ok else "CHECK THE ROWS ABOVE")
+    if not ok:
+        raise SystemExit(1)     # makes run_pipeline.py stop
 
 
 if __name__ == "__main__":

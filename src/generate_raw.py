@@ -293,7 +293,7 @@ def build_targets(truth):
         months.append(d)
         d = date(d.year + (d.month == 12), d.month % 12 + 1, 1)
 
-    # target = about 1.3x the savings the ideas could deliver, so the year is tight
+    # target = a bit below everything the ideas could deliver, so the year is tight
     potential = {v: 0.0 for v in VEHICLES}
     for t in truth:
         if t["status"] != "Cancelled":
@@ -306,7 +306,7 @@ def build_targets(truth):
     ws.append([])
     ws.append(["Vehicle"] + [m.strftime("%b-%y") for m in months] + ["Total"])
     for v in VEHICLES:
-        yearly = potential[v] * rng.uniform(1.2, 1.4)
+        yearly = potential[v] * rng.uniform(0.85, 1.0)
         weights = [rng.uniform(0.6, 1.4) for _ in months]
         monthly = [round(yearly * w / sum(weights), 1) for w in weights]
         ws.append([v] + monthly + [round(sum(monthly), 1)])

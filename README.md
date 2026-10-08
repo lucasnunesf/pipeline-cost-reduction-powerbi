@@ -55,11 +55,11 @@ staging tables (SQLite)
     ▼
 clean tables (+ check_truth.py: compare with the original clean data)
     │
-    │  model (SQL)       fact table of ideas + dimensions (supplier, buyer,
-    │                    vehicle, fiscal calendar April–March) + targets
+    │  03_model.sql      star model: fact_idea + fact_target, dimensions for
+    │                    supplier, buyer, vehicle, status and a fiscal calendar
     ▼
-reporting views      business rules: delayed ideas, real vs. paper saving,
-    │                    accumulated saving vs. target
+04_views.sql         business rules, one view per report page
+    │
     ▼
 Power BI
 ```
@@ -69,6 +69,8 @@ Power BI
 - **Staging keeps the data exactly as typed.** Every value lands as text, with the file and row it came from. Fixing happens in a separate step, so it is always possible to compare the original with the cleaned value.
 - **Delayed is a rule, not a status.** An idea is delayed when its planned date has passed and it is not implemented. Nobody has to remember to update it.
 - **Calculated columns from the source are not trusted.** Suppliers can type over the formulas, so savings are recalculated from cost and volume.
+- **Implemented saving counts in the month of implementation.** The full annual saving of an idea goes to the month it went into production, the same way the programme is reported.
+- **One reference date for the whole model.** "Delayed" and "open" are calculated against the date the files were collected (`params` table), not today's date, so the numbers do not change by themselves.
 - **Every row keeps its source file.** Any number in the dashboard can be traced back to the workbook it came from.
 
 ## Cleaning results
@@ -91,13 +93,38 @@ On the current synthetic data:
 
 **How the cleaning is tested:** before adding the defects, `generate_raw.py` saves the clean version of every idea. `check_truth.py` compares the pipeline result with it, field by field. Current result: 912 of 912 ideas recovered, 0 field mismatches.
 
+## Data model
+
+```
+dim_supplier ─┐                     ┌─ dim_calendar (fiscal year April–March)
+dim_buyer ────┼──── fact_idea ──────┤
+dim_status ───┘     (one row per    └─ dim_vehicle ──── fact_target
+                     idea)                              (vehicle × month)
+```
+
+| View | Report page | Question it answers |
+|---|---|---|
+| `vw_overview` | Overview | How many ideas, where they are, how many are late |
+| `vw_vehicle_status` | Status by vehicle | What is real, what is only on paper, and the gap to the target |
+| `vw_fy_cumulative` | Fiscal year | Accumulated target vs. implemented saving vs. forecast |
+| `vw_buyer_ranking`, `vw_supplier_ranking` | Buyers and suppliers | Who is delivering, who has a lot open or late |
+| `vw_dq_by_file` | Data quality | Which supplier files needed the most fixing |
+
+The forecast in `vw_fy_cumulative` adds every approved or under-study idea in its planned month. An idea that is already late cannot be delivered in the past, so it is counted in the month after the reference date.
+
 ## How to run
 
 ```bash
 pip install -r requirements.txt
+python src/run_pipeline.py --generate
+```
+
+`run_pipeline.py` runs every step in order and stops at the first one that fails. Without `--generate`, it reuses the source files already in `data/raw/`. Each step can also be run on its own:
+
+```bash
 python src/generate_raw.py   # create the synthetic source files
 python src/load_raw.py       # land them in data/cost_reduction.db
-python src/build_sql.py      # run the SQL files: cleaning and model
+python src/build_sql.py      # run the SQL files: cleaning, model and views
 python src/check_truth.py    # test the cleaning against the original data
 ```
 
@@ -109,8 +136,11 @@ src/generate_raw.py                creates the synthetic source files
 src/load_raw.py                    loads every file into SQLite staging tables, as typed
 src/build_sql.py                   runs the SQL files in order
 src/check_truth.py                 tests the cleaning against the original clean data
+src/run_pipeline.py                runs all the steps in order
 sql/01_mappings.sql                lookup tables (status spellings, status order)
 sql/02_clean.sql                   cleaning rules and data quality log
+sql/03_model.sql                   star model: facts, dimensions, fiscal calendar
+sql/04_views.sql                   business rules and reporting views
 data/                              generated files (not versioned)
 ```
 
@@ -120,6 +150,6 @@ data/                              generated files (not versioned)
 - [x] Synthetic source files with realistic defects
 - [x] Load all files into staging
 - [x] Cleaning and standardization in SQL, tested against the original data
-- [ ] Data model and reporting views in SQL
+- [x] Data model and reporting views in SQL
 - [ ] Power BI dashboard and screenshots
 - [ ] Insights written up
