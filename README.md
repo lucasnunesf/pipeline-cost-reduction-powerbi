@@ -66,7 +66,7 @@ Power BI
 
 The views in this repository are shaped for a five-page Power BI report: overview, status by vehicle, fiscal year, buyers and suppliers, plus a data quality page.
 
-The report I built for the original problem is shown in my portfolio: **[Automotive Cost Reduction Tracking (Notion)](NOTION_LINK_HERE)**. That version was built with Power Query on the real files, so its screenshots and numbers are not the output of this pipeline. This repository is the redesign of the data side: it replaces the manual consolidation with a repeatable pipeline, which was the main "next step" listed in that case study.
+This project focuses on the data side: it replaces the manual consolidation of the supplier files with a repeatable pipeline. Power BI connects to the views as they are, with no cleaning left to do in Power Query.
 
 ## Design choices
 
@@ -155,4 +155,5 @@ data/                              generated files (not versioned)
 - [x] Load all files into staging
 - [x] Cleaning and standardization in SQL, tested against the original data
 - [x] Data model and reporting views in SQL
-- [x] Dashboard shown in the [Notion case study](NOTION_LINK_HERE)
+
+The Power BI report file itself is not part of this repository.
