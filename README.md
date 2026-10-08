@@ -4,8 +4,6 @@ A Python and SQL pipeline that consolidates cost reduction ideas from 150 suppli
 
 > **About this project:** this is a case study based on a problem I found while working in procurement at a car manufacturer: tracking cost reduction ideas spread across 100+ supplier Excel files. The solution here is my own design of how it could be done with a proper data pipeline. It is not the system used at the company, and all data is synthetic.
 
-🚧 **Work in progress.** See [Status](#status) for what is done and what is next.
-
 ## The problem
 
 Every supplier sends their cost reduction ideas in an Excel file. All files use the same template, but there are more than 100 of them, and they are updated during the whole year.
@@ -63,6 +61,12 @@ clean tables (+ check_truth.py: compare with the original clean data)
     ▼
 Power BI
 ```
+
+## The dashboard
+
+The views in this repository are shaped for a five-page Power BI report: overview, status by vehicle, fiscal year, buyers and suppliers, plus a data quality page.
+
+The report I built for the original problem is shown in my portfolio: **[Automotive Cost Reduction Tracking (Notion)](NOTION_LINK_HERE)**. That version was built with Power Query on the real files, so its screenshots and numbers are not the output of this pipeline. This repository is the redesign of the data side: it replaces the manual consolidation with a repeatable pipeline, which was the main "next step" listed in that case study.
 
 ## Design choices
 
@@ -144,12 +148,11 @@ sql/04_views.sql                   business rules and reporting views
 data/                              generated files (not versioned)
 ```
 
-## Status
+## Scope
 
 - [x] Problem and supplier template defined
 - [x] Synthetic source files with realistic defects
 - [x] Load all files into staging
 - [x] Cleaning and standardization in SQL, tested against the original data
 - [x] Data model and reporting views in SQL
-- [ ] Power BI dashboard and screenshots
-- [ ] Insights written up
+- [x] Dashboard shown in the [Notion case study](NOTION_LINK_HERE)
