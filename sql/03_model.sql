@@ -104,6 +104,11 @@ CREATE TABLE fact_idea (
     actual_date         TEXT,
     -- the saving counts in full in the month the idea was implemented
     saving_month        TEXT,
+    -- the month the saving is expected: the real month for implemented ideas,
+    -- the planned month for approved and under-study ones. A late idea cannot
+    -- be delivered in the past, so it moves to the month after the reference
+    -- date. Every view that forecasts reads this one column.
+    expected_month      TEXT,
     is_open             INTEGER NOT NULL,  -- 1 = still expected to deliver
     is_delayed          INTEGER NOT NULL,  -- 1 = planned date passed, not implemented
     days_late           INTEGER,
@@ -124,6 +129,13 @@ SELECT
     c.planned_date,
     c.actual_date,
     CASE WHEN c.status = 'Implemented' THEN STRFTIME('%Y-%m-01', c.actual_date) END,
+    CASE
+        WHEN c.status = 'Implemented' THEN STRFTIME('%Y-%m-01', c.actual_date)
+        WHEN c.status IN ('Approved', 'Under study') AND c.planned_date < p.as_of_date
+            THEN STRFTIME('%Y-%m-01', DATE(p.as_of_date, '+1 month'))
+        WHEN c.status IN ('Approved', 'Under study')
+            THEN STRFTIME('%Y-%m-01', c.planned_date)
+    END,
     s.is_open,
     -- DELAYED RULE: still open and the planned date is before the reference date.
     -- "Delayed" is never typed by anyone; it is always calculated here.

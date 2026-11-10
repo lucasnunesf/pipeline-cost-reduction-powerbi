@@ -24,6 +24,9 @@ FROM fact_idea;
 
 -- ------------------------------------------------------------------ 2. Status by vehicle
 -- Per vehicle: what is real, what is only on paper, and the gap to the target.
+-- Approved and under-study saving counts only when it is expected inside the
+-- fiscal year, the same rule vw_fy_cumulative uses, so both pages give the
+-- same forecast. What is expected later is shown apart, in after_fy_k.
 DROP VIEW IF EXISTS vw_vehicle_status;
 
 CREATE VIEW vw_vehicle_status AS
@@ -35,13 +38,15 @@ WITH fy_target AS (
 ),
 saving AS (
     SELECT
-        vehicle,
-        SUM(CASE WHEN status = 'Implemented' THEN annual_saving_k ELSE 0 END) AS implemented_k,
-        SUM(CASE WHEN status = 'Approved'    THEN annual_saving_k ELSE 0 END) AS approved_k,
-        SUM(CASE WHEN status = 'Under study' THEN annual_saving_k ELSE 0 END) AS under_study_k,
-        SUM(CASE WHEN status = 'Proposed'    THEN annual_saving_k ELSE 0 END) AS proposed_k
-      FROM fact_idea
-     GROUP BY vehicle
+        f.vehicle,
+        SUM(CASE WHEN f.status = 'Implemented' AND in_fy THEN f.annual_saving_k ELSE 0 END) AS implemented_k,
+        SUM(CASE WHEN f.status = 'Approved'    AND in_fy THEN f.annual_saving_k ELSE 0 END) AS approved_k,
+        SUM(CASE WHEN f.status = 'Under study' AND in_fy THEN f.annual_saving_k ELSE 0 END) AS under_study_k,
+        SUM(CASE WHEN f.status = 'Proposed'          THEN f.annual_saving_k ELSE 0 END) AS proposed_k,
+        SUM(CASE WHEN f.expected_month > p.fy_end    THEN f.annual_saving_k ELSE 0 END) AS after_fy_k
+      FROM (SELECT f.*, f.expected_month BETWEEN p.fy_start AND p.fy_end AS in_fy
+              FROM fact_idea f, params p) f, params p
+     GROUP BY f.vehicle
 )
 SELECT
     t.vehicle,
@@ -50,6 +55,7 @@ SELECT
     ROUND(COALESCE(s.approved_k, 0), 1)                          AS approved_k,
     ROUND(COALESCE(s.under_study_k, 0), 1)                       AS under_study_k,
     ROUND(COALESCE(s.proposed_k, 0), 1)                          AS proposed_k,
+    ROUND(COALESCE(s.after_fy_k, 0), 1)                          AS after_fy_k,
     -- what is still missing even if everything approved and under study is delivered
     ROUND(MAX(t.target_k - COALESCE(s.implemented_k, 0)
                          - COALESCE(s.approved_k, 0)
@@ -61,9 +67,8 @@ LEFT JOIN saving s ON s.vehicle = t.vehicle;
 
 -- ------------------------------------------------------------------ 3. Fiscal year, month by month
 -- Accumulated target, accumulated implemented saving, and a forecast:
--- implemented + approved + under study, each open idea counted in its planned month.
--- An open idea already late cannot be delivered in the past, so it is counted
--- in the month after the reference date. Ideas planned after the fiscal year are left out.
+-- implemented + approved + under study, each open idea counted in its
+-- expected_month (see fact_idea). Ideas expected after the fiscal year are left out.
 DROP VIEW IF EXISTS vw_fy_cumulative;
 
 CREATE VIEW vw_fy_cumulative AS
@@ -82,14 +87,10 @@ implemented AS (
      GROUP BY saving_month
 ),
 expected AS (
-    SELECT
-        CASE WHEN f.planned_date < p.as_of_date
-             THEN STRFTIME('%Y-%m-01', DATE(p.as_of_date, '+1 month'))
-             ELSE STRFTIME('%Y-%m-01', f.planned_date) END AS month_start,
-        SUM(f.annual_saving_k) AS expected_k
-      FROM fact_idea f, params p
-     WHERE f.status IN ('Approved', 'Under study')
-     GROUP BY 1
+    SELECT expected_month AS month_start, SUM(annual_saving_k) AS expected_k
+      FROM fact_idea
+     WHERE status IN ('Approved', 'Under study')
+     GROUP BY expected_month
 )
 SELECT
     m.month_start,
