@@ -259,7 +259,6 @@ data/                              generated files (not versioned)
 
 The problem, the business rules and the design decisions are mine. They come from my work in procurement at Toyota do Brasil. I used an AI coding assistant to write the code faster and reviewed the result.
 
-<!-- Lucas: write here, in your own words, one or two sentences about where you saw this problem happen. -->
 
 ## Author
 
