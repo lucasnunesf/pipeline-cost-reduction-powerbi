@@ -249,12 +249,6 @@ data/                              generated files (not versioned)
 
 ---
 
-## Next steps
-
-- Read the supplier files straight from a shared folder or SharePoint instead of a local copy.
-- Schedule the monthly run and keep a snapshot of each month, so the forecast can be compared with what really happened.
-- Row level security in Power BI, so each buyer sees only their own suppliers.
-
 ## How this was built
 
 The problem, the business rules and the design decisions are mine. They come from my work in procurement at Toyota do Brasil. I used an AI coding assistant to write the code faster and reviewed the result.
