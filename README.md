@@ -15,7 +15,7 @@ A Python and SQL pipeline that consolidates cost reduction ideas from 150 suppli
 | **My role** | I built the cost reduction dashboard while working in procurement at a car manufacturer. This repository is my redesign of the data step behind it: design, Python, SQL, tests. |
 | **What's here** | 5 Python scripts, 4 SQL files, a star model, 6 reporting views, 48 automated tests, CI on every commit. |
 | **Skills** | Python (openpyxl), SQL (CTEs, window functions, recursive queries), data cleaning, data quality logging, dimensional modelling, fiscal calendars, Power BI, testing (pytest), GitHub Actions |
-| **Full case** | [Automotive Cost Reduction Tracking](https://app.notion.com/p/3de917c89c1780c38feccacc9238ab6e) |
+| **Full case** | [Automotive Cost Reduction Tracking](https://lucasnunesf.notion.site/Automotive-Cost-Reduction-Tracking-3de917c89c1780c38feccacc9238ab6e) |
 
 The dashboard at work was fed by a base cleaned by hand in Power Query. This version moves that work into a pipeline that can be rerun, traced and tested. It is a case study, not the system used at the company, and all data is synthetic: `src/generate_raw.py` builds the 150 files with the defects found in real hand-filled spreadsheets.
 
@@ -256,4 +256,4 @@ The problem, the business rules and the design decisions are mine. They come fro
 
 ## Author
 
-Lucas Fernandes Nunes · [Portfolio](https://lucasnunesf.notion.site) · [GitHub](https://github.com/lucasnunesf)
+Lucas Fernandes Nunes · [Portfolio](https://lucasnunesf.notion.site/Lucas-Nunes-Data-BI-Analyst-3de917c89c178092885cf639b619767b) · [GitHub](https://github.com/lucasnunesf)
