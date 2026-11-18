@@ -249,9 +249,9 @@ data/                              generated files (not versioned)
 
 ---
 
-## How this was built
+## Background
 
-The problem, the business rules and the design decisions are mine. They come from my work in procurement at Toyota do Brasil. I used an AI coding assistant to write the code faster and reviewed the result.
+The problem, the business rules and the design decisions are mine. They come from my work in procurement at Toyota do Brasil.
 
 
 ## Author
