@@ -1,13 +1,5 @@
-# generated data
-data/
+# Database created by scripts/consolidate.py
 *.db
-
-# Excel and Power BI files
-*.xlsx
 *.pbix
-!templates/*.xlsx
-
-# Python
 __pycache__/
 .venv/
-.pytest_cache/

@@ -1,259 +1,98 @@
-# Cost Reduction Pipeline
+# Cost Reduction Tracking
 
-A Python and SQL pipeline that consolidates cost reduction ideas from 150 supplier Excel files into one clean model for Power BI, and answers the question the programme lives on: will we hit the savings target this fiscal year?
+![Cost reduction tracking](docs/banner.png)
 
-![150 supplier spreadsheets, one cost reduction dashboard](docs/banner.png)
-
-![Python](https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white)
-![SQL](https://img.shields.io/badge/SQL-SQLite-003B57?logo=sqlite&logoColor=white)
-![Power BI](https://img.shields.io/badge/Power%20BI-report-F2C811?logo=powerbi&logoColor=black)
-[![tests](https://github.com/lucasnunesf/pipeline-cost-reduction-powerbi/actions/workflows/tests.yml/badge.svg)](https://github.com/lucasnunesf/pipeline-cost-reduction-powerbi/actions/workflows/tests.yml)
-
-| At a glance | |
-|---|---|
-| **Result** | 150 supplier files consolidated in one command (about 3 s). 912 ideas recovered with 0 field mismatches. 1,783 fixes, each logged with its file and row. |
-| **My role** | I built the cost reduction dashboard while working in procurement at a car manufacturer. This repository is my redesign of the data step behind it: design, Python, SQL, tests. |
-| **What's here** | 5 Python scripts, 4 SQL files, a star model, 6 reporting views, 48 automated tests, CI on every commit. |
-| **Skills** | Python (openpyxl), SQL (CTEs, window functions, recursive queries), data cleaning, data quality logging, dimensional modelling, fiscal calendars, Power BI, testing (pytest), GitHub Actions |
-| **Full case** | [Automotive Cost Reduction Tracking](https://lucasnunesf.notion.site/Automotive-Cost-Reduction-Tracking-3de917c89c1780c38feccacc9238ab6e) |
-
-The dashboard at work was fed by a base cleaned by hand in Power Query. This version moves that work into a pipeline that can be rerun, traced and tested. It is a case study, not the system used at the company, and all data is synthetic: `src/generate_raw.py` builds the 150 files with the defects found in real hand-filled spreadsheets.
-
----
-
-## Results
-
-![Will we hit the target?](docs/forecast.png)
-
-Everything here comes from one run of `python src/run_pipeline.py --generate`, judged as of 31 December 2026 (USD thousands).
+A Power BI dashboard that brings the cost reduction ideas of 150 suppliers into one place and shows, in the middle of the year, whether the annual savings target will be reached.
 
 | | |
 |---|---|
-| Target for FY2026 (April 2026 to March 2027) | 14,288 |
-| Implemented, real saving | 2,925 (20% of the target) |
-| Forecast, if every approved and under-study idea lands on time | 11,970 (84%) |
-| Gap still to find | 2,318 (16%) |
-| Ideas | 912: 159 implemented, 383 approved, 176 under study, 145 proposed, 49 cancelled |
-| Ideas past their planned date | 377, worth 6,772 |
-
-| Before | After |
-|---|---|
-| Days of opening files one by one, every month | 1 command, about 3 s (9 s when the 150 files are regenerated) |
-| Typed-over formulas went into the totals | Every saving recalculated from cost and volume |
-| Copied ideas counted twice | 48 copies removed, keeping the owner's file |
-| No way to say where a number came from | Every row keeps its source file and row |
+| **Problem** | Every supplier sent its ideas in its own Excel file. Someone opened every file and added everything by hand. It took days, every month. |
+| **Where** | Purchasing at a car manufacturer. |
+| **Solution** | All files joined into one clean table and a Power BI dashboard with the status of every idea, by vehicle, buyer and supplier. |
+| **Result** | Days of monthly work became one refresh, and the gap to the target became visible in the middle of the year, with time to react. |
+| **Tools** | Power BI · DAX · Power Query · Excel · Python (pandas) · SQL |
 
 ---
 
 ## The problem
 
-![Before and after](docs/before-after.png)
+![One Excel file per supplier](docs/dashboard/supplier-files.png)
 
-Every supplier sends their cost reduction ideas in an Excel file. They all use the same template ([`templates/supplier_template.xlsx`](templates/supplier_template.xlsx)), but there are 150 of them, filled in by different people and updated all year.
-
-To know how the programme is going, someone had to open the files and add everything up by hand. Questions the team could not answer fast:
+Every supplier sent its cost reduction ideas in an Excel file, all from the same template. There were more than 150 files, updated during the whole year. To know how the programme was going, someone had to open every file and add everything by hand. It took days, every month, and the team still could not answer quickly:
 
 - How many ideas do we have, and where are they stuck?
 - How much saving is real, and how much is only on paper?
-- Are we going to reach the target this fiscal year?
-- Which vehicles, buyers and suppliers are delivering?
+- Will we reach the target this fiscal year?
 
----
+## The dashboard
 
-## How it works
+The dashboard used at work. The numbers, names and vehicles were changed, so no company data is shown. Values in USD thousands.
 
-![Pipeline](docs/pipeline.png)
+**Overview.** How many ideas there are and in which status: approved by management (Rank A), approved by finance, already implemented, and late.
 
-| Step | File | What it does | Language | Output |
-|---|---|---|---|---|
-| 0 | `generate_raw.py` | Creates 150 supplier files and the finance target sheet, defects included, plus a clean copy of every idea | Python | `data/raw/`, `data/truth/` |
-| 1 | `load_raw.py` | Reads every file as typed, all text, keeping file and row | Python | 960 staging rows |
-| 2 | `02_clean.sql` | Fixes names, numbers, dates and status, removes copies, recalculates savings, logs every fix | SQL | 912 clean ideas, `dq_issues` |
-| 3 | `03_model.sql` | Star model with a fiscal calendar (April to March) and the delay rule | SQL | `fact_idea`, `fact_target`, 5 dimensions |
-| 4 | `04_views.sql` | One view per report page | SQL | 6 views |
-| 5 | `check_truth.py` | Compares every clean idea with the original, field by field, and stops the run on any mismatch | Python | PASS or the rows that differ |
+![Overview](docs/dashboard/overview.png)
 
-`run_pipeline.py` runs the steps in order and stops at the first one that fails.
+**By vehicle.** For each vehicle, how much is implemented, approved, under study and still missing to reach the target.
 
-### The hard part: one template, 150 ways to fill it
+![Status by vehicle](docs/dashboard/by-vehicle.png)
 
-![Cleaning](docs/cleaning.png)
+**Fiscal year.** Saving implemented against the target, added up month by month (April to March). It shows when the implemented line stopped growing.
 
-The same value arrives in many shapes: `"12,40"`, `"$12.40"` and `"12.40 USD"` for a cost, `"5.000"` and `"5,000"` for a volume, 25 spellings for 5 statuses. The cleaning lives in SQL, so each rule can be read on its own, and every fix goes into `dq_issues` with the file, the row and what was done. That table also feeds a data quality page, so buyers can see which supplier files need the most attention.
+![Fiscal year](docs/dashboard/fiscal-year.png)
 
-How do we know the cleaning is right? Before adding the defects, the generator saves the clean version of every idea. `check_truth.py` compares the pipeline result with it: 912 of 912 ideas, 0 field mismatches. The 12 ideas sent with no ID and no other copy are kept under a generated key instead of being dropped.
+**Month, buyer and supplier.** Who is delivering, and who has a target with no activity.
 
----
+![Month, buyer and supplier](docs/dashboard/month-buyer-supplier.png)
 
-## Design decisions
+## How the data gets there
 
-**Staging keeps the data exactly as typed.** Every value lands as text with its file and row. Fixing happens in a separate step, so the original and the cleaned value can always be compared.
+At work, the files were joined and cleaned by hand in Power Query. This repository does that step automatically, with fake data:
 
-**Cleaning is in SQL, not Python.** Each rule is a readable `CASE` or `REPLACE`. Adding a new status spelling is one `INSERT` into `map_status`, not a code change.
+```
+150 supplier Excel files  →  Python joins and cleans them  →  SQL views  →  CSV files for Power BI
+```
 
-**Calculated columns from the source are not trusted.** Suppliers type over formulas, so savings are recalculated from cost and volume. The 47 overwritten ones are logged.
+1. **Excel.** `scripts/generate_data.py` creates 150 fake supplier files with the same kind of mistakes as the real ones.
+2. **Python.** `scripts/consolidate.py` reads every file with pandas and fixes what was typed by hand:
+   - names and status written in different ways (`SUPPLIER 001`, ` implemented `)
+   - numbers typed as text (`12,50`) and dates typed as text (`05/09/2026`)
+   - blank rows, and the same idea copied into two files
+3. **SQL.** The clean table goes into a SQLite database, and `sql/views.sql` has one view per dashboard page: status, by vehicle, fiscal year (running total with `SUM() OVER`), by buyer and by supplier.
+4. **Power BI.** Each view is saved as a CSV in `output/`, ready for Power BI.
 
-**When an idea is copied into another file, the owner's copy wins.** The supplier code inside the ID (`CR-S071-004` belongs to `S071`) decides. Then the most recent file.
+## Results (fake data)
 
-**Delayed is a rule, not a status.** An idea is delayed when its planned date has passed and it is still open. Nobody has to remember to update it.
+| | |
+|---|---|
+| Rows read from 150 files | 975 |
+| Blank rows removed | 37 |
+| Ideas copied into two files, kept once | 15 |
+| Ideas after cleaning | 923 |
+| Target for the fiscal year | USD 23,252k |
+| Saving already implemented | USD 6,776k (29% of the target) |
+| If every approved and under-study idea lands | 94% of the target, USD 1,328k still to find |
 
-**One reference date for the whole model.** Delay and forecast are judged against the date the files were collected (`params`), not today, so the numbers do not change by themselves.
+## Files
 
-**One rule for when a saving is expected.** `fact_idea.expected_month` holds it: the real month for implemented ideas, the planned month for open ones, and the month after the reference date for open ideas already late. Every forecast reads that column.
+| Folder | What is in it |
+|---|---|
+| `data/` | The 150 fake supplier files and the target file |
+| `scripts/` | `generate_data.py` (creates the files) and `consolidate.py` (cleans and loads SQL) |
+| `sql/` | `views.sql`, the five views used by Power BI |
+| `output/` | The CSV files Power BI reads |
+| `docs/` | Images |
 
----
-
-## Try it
+To run it:
 
 ```bash
-git clone https://github.com/lucasnunesf/pipeline-cost-reduction-powerbi
-cd pipeline-cost-reduction-powerbi
 pip install -r requirements.txt
-python src/run_pipeline.py --generate
+python scripts/consolidate.py
 ```
-
-Real output:
-
-```
-=== generate_raw.py
-150 supplier files, 912 ideas, targets.xlsx -> data/raw
-
-=== load_raw.py
-150 supplier files read (6 with no ideas), 960 idea rows, 65 target rows -> cost_reduction.db
-
-=== build_sql.py
-ran 01_mappings.sql
-ran 02_clean.sql
-ran 03_model.sql
-ran 04_views.sql
-  clean_ideas        912 rows
-  clean_idea_area   1827 rows
-  clean_targets       60 rows
-  dq_issues         1783 rows
-
-=== check_truth.py
-ideas in truth:              912
-ideas in clean_ideas:        912
-  kept with a generated key: 12
-truth ideas not found:       12
-unexpected ideas:            0
-field mismatches:            0
-
-RESULT: PASS
-
-Pipeline finished.
-```
-
-Without `--generate`, it reuses the files already in `data/raw/`. Each step also runs on its own (`python src/load_raw.py`, `python src/build_sql.py`, `python src/check_truth.py`).
-
----
-
-## Tests
-
-```bash
-pytest
-```
-
-```
-48 passed in 15.96s
-```
-
-The same tests run on GitHub Actions on every commit.
-
-| File | Level | What it checks |
-|---|---|---|
-| `test_cleaning.py` | cleaning rules | each money, volume, date, status and buyer format; areas; recalculated savings; copies; missing IDs |
-| `test_rules.py` | business rules | delay, saving month, fiscal calendar, forecast of late ideas, and that two report pages agree |
-| `test_pipeline.py` | end to end | generates the 150 files in a scratch folder, runs everything, checks the truth comparison, the data quality log, a rerun, and that a broken rule stops the run |
-
-The cleaning tests build a tiny staging table in memory and run the real `sql/` files over it, so each rule is checked with one row at a time.
-
-### The bug the tests found
-
-Two report pages answer the same question, "how much will we deliver this fiscal year?", and they disagreed. The vehicle page counted every approved and under-study idea. The fiscal-year page left out the ones planned after March 2027. That was 69 ideas worth 1,020.
-
-The vehicle page showed a total gap of 1,303. The fiscal-year page showed 2,318. Vehicle 2 looked fully covered, with a gap of 0. It is 254 short.
-
-`test_vehicle_page_and_fiscal_year_page_expect_the_same_saving` failed on the first version. The fix moved the rule into one column, `fact_idea.expected_month`, which both views now read. Savings expected after the fiscal year are shown apart, in `after_fy_k`.
-
----
-
-<details>
-<summary><b>Data model</b></summary>
-
-```
-dim_supplier ─┐                     ┌─ dim_calendar (fiscal year April–March)
-dim_buyer ────┼──── fact_idea ──────┤
-dim_status ───┘     (one row per    └─ dim_vehicle ──── fact_target
-                     idea)                              (vehicle × month)
-```
-
-| View | Report page | Question it answers |
-|---|---|---|
-| `vw_overview` | Overview | How many ideas, where they are, how many are late |
-| `vw_vehicle_status` | Status by vehicle | What is real, what is only on paper, and the gap to the target |
-| `vw_fy_cumulative` | Fiscal year | Accumulated target vs. implemented saving vs. forecast |
-| `vw_buyer_ranking`, `vw_supplier_ranking` | Buyers and suppliers | Who is delivering, who has a lot open or late |
-| `vw_dq_by_file` | Data quality | Which supplier files needed the most fixing |
-
-</details>
-
-<details>
-<summary><b>Every fix the pipeline logged</b></summary>
-
-| What was found | Rows | What the pipeline did |
-|---|---:|---|
-| Costs or volumes typed as text ("12,40", "$50.58", "16000 pcs") | 568 | Converted |
-| Buyer or vehicle written in a non-standard way | 440 | Mapped to the standard name |
-| Dates typed as text, in mixed formats | 381 | Converted, read day first |
-| Status written in a non-standard way (25 spellings for 5 statuses) | 262 | Mapped with the `map_status` table |
-| Same idea twice, or copied into another supplier's file | 48 | Removed, keeping the owner's copy |
-| Saving typed over the formula | 47 | Recalculated from cost and volume |
-| Supplier name written differently in the file header | 18 | Name taken from the supplier code |
-| Idea with no ID | 13 | 1 recovered from another copy, 12 kept with a generated key |
-| Supplier sent the template with no ideas | 6 | Nothing loaded |
-
-</details>
-
-<details>
-<summary><b>Project layout</b></summary>
-
-```
-templates/supplier_template.xlsx   the template every supplier fills in
-src/generate_raw.py                creates the synthetic source files and the truth file
-src/load_raw.py                    loads every file into SQLite staging tables, as typed
-src/build_sql.py                   runs the SQL files in order
-src/check_truth.py                 compares the cleaning with the original clean data
-src/run_pipeline.py                runs all the steps in order
-sql/01_mappings.sql                lookup tables (status spellings, status order)
-sql/02_clean.sql                   cleaning rules and data quality log
-sql/03_model.sql                   star model: facts, dimensions, fiscal calendar
-sql/04_views.sql                   business rules and reporting views
-tests/                             cleaning, rule and end-to-end tests
-docs/                              README images
-data/                              generated files (not versioned)
-```
-
-</details>
-
-<details>
-<summary><b>Glossary</b></summary>
-
-- **Cost reduction idea**: a supplier's proposal to make a part cheaper (new material, packaging, route, and so on).
-- **Annual saving**: (current cost − new cost) × annual volume, in USD thousands.
-- **Approved / Under study / Implemented**: the steps an idea goes through. Only implemented saving is real.
-- **Fiscal year**: April to March. FY2026 runs from April 2026 to March 2027.
-- **Commodity group**: the family of parts a supplier belongs to.
-
-</details>
-
----
 
 ## Background
 
-The problem, the business rules and the design decisions are mine. They come from my work in procurement at Toyota do Brasil.
+Based on my work in purchasing at Toyota do Brasil. The dashboard images are from the real report with all numbers and names changed; the data in this repository is synthetic.
 
-
-## Author
+---
 
 Lucas Fernandes Nunes · [Portfolio](https://lucasnunesf.notion.site/Lucas-Nunes-Data-BI-Analyst-3de917c89c178092885cf639b619767b) · [GitHub](https://github.com/lucasnunesf)
